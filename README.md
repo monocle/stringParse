@@ -4,7 +4,7 @@
 
 stringParse takes a string and breaks it into tokens.
 
-# Usage
+## Usage
 
 Calling `stringParse(text)` will create tokens of consecutive whitespace, digits or words. The remaining characters are split individually.
 
@@ -33,15 +33,50 @@ The following tokens will be obtained:
 ];
 ```
 
-Alternatively, a mapping parameter can be provided to replace the default types to something else:
+## Convenience Options
+
+### Changing token types
+
+A `typeMap` option can be provided to replace the default types to something else:
 
 ```javascript
-const typeMap = { keyword: ["function"] };
-const tokens = stringParse(text, { typeMap });
+const options = {
+  typeMap: { keyword: ["function"] },
+};
+const tokens = stringParse(text, options);
 ```
 
 This would change the `function` token to:
 
 ```javascript
 { type: "keyword": value: "function" }
+```
+
+### Array of reducing functions
+
+More generally, an array of reducing functions can be provided:
+
+```javascript
+const mergeAll = (newTokens, token) => {
+  if (newTokens.length === 0) {
+    newTokens.push(token);
+  } else {
+    newTokens[newTokens.length - 1].value += token.value;
+  }
+  return newTokens;
+};
+
+const changeTypeToString = (newTokens, { type, value }) => {
+  newTokens.push({ type: "string", value });
+  return newTokens;
+};
+
+const opts = { reducers: [mergeAll, changeTypeToString] };
+const tokens = stringParse(text, opts);
+```
+
+This would take all of the tokens and return a single token:
+
+```javascript
+{ type: "string": value: "  function(x = 1){}" }
 ```
