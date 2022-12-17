@@ -21,7 +21,7 @@ function createBasicTokens(text) {
   });
 }
 
-function createTokenMap(typeMap) {
+function createTokenMap(typeMap = {}) {
   return Object.entries(typeMap).reduce((all, [newType, value]) => {
     if (_.isString(value)) {
       all.set(value, newType);
@@ -42,21 +42,83 @@ function remapTokens(tokenMap) {
   };
 }
 
-function arrayReduce(tokens, [first, ...rest]) {
-  if (!first) return tokens;
+function arrayReduce(tokens, reducers = []) {
+  if (reducers.length === 0) return tokens;
+
+  const [first, ...rest] = reducers;
 
   const newTokens = tokens.reduce(first, []);
 
   return arrayReduce(newTokens, rest);
 }
 
-export default function stringParse(text, opts = { typeMap: {} }) {
-  let { typeMap, reducers } = opts;
-  const tokenMap = opts.typeMap ? createTokenMap(typeMap) : new Map();
+// ------------------------ concat ---------------------
+function isAtTokenPos(targetStr, tokens, idx) {
+  return targetStr.split("").every((char, i) => {
+    return char === tokens[idx + i].value;
+  });
+}
 
-  reducers = reducers || [];
+function tokenReducer(
+  type,
+  startDelimeter,
+  endDelimeter,
+  includeStartDelimeter
+) {
+  if (!startDelimeter) {
+    throw new Error(
+      "[stringParse] A start delimeter must be provided for the concat option"
+    );
+  }
 
-  let tokens = createBasicTokens(text).map(remapTokens(tokenMap));
+  let tempToken = undefined;
 
-  return arrayReduce(tokens, reducers);
+  return (newTokens, curToken, idx, origTokens) => {
+    const startDelimFirstChar = startDelimeter[0];
+    const isBuilding = !!tempToken;
+    const isFinishedBuilding =
+      isBuilding && isAtTokenPos(endDelimeter, origTokens, idx + 1);
+    const shouldContinueBuilding = isBuilding && !isFinishedBuilding;
+    const shouldStartBuilding =
+      !isBuilding && isAtTokenPos(startDelimeter, origTokens, idx);
+
+    if (shouldStartBuilding) {
+      if (includeStartDelimeter) {
+        tempToken = { type, value: startDelimFirstChar };
+      }
+    } else if (shouldContinueBuilding) {
+      tempToken.value += curToken.value;
+    } else if (isFinishedBuilding) {
+      tempToken.value += curToken.value;
+      newTokens.push({ ...tempToken });
+
+      tempToken = undefined;
+    } else {
+      newTokens.push(curToken);
+    }
+
+    return newTokens;
+  };
+}
+
+function createConcatReducers(concat = []) {
+  return concat.map(({ type, start, end, includeStartDelimeter }) => {
+    return tokenReducer(type, start, end, includeStartDelimeter);
+  });
+}
+
+export default function stringParse(text, opts) {
+  const { typeMap, concat } = opts;
+  const tokenMap = createTokenMap(typeMap);
+  const concatReducers = createConcatReducers(concat);
+  let reducers = opts.reducers || [];
+
+  // Reducing should happen before remapping tokens.
+  // Custom reducers should happen after convenience reducers
+  // since the user can run custom reducers manually after
+  // stringParse().
+  let tokens = createBasicTokens(text);
+  tokens = arrayReduce(tokens, concatReducers.concat(reducers));
+
+  return tokens.map(remapTokens(tokenMap));
 }
