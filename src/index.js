@@ -2,6 +2,20 @@ const _ = {
   isString(val) {
     return typeof val === "string" || val instanceof String;
   },
+  assertExists(thing, message) {
+    if (!thing) {
+      throw new Error(message);
+    }
+  },
+};
+
+_.arrayReduce = function arrayReduce(tokens, reducers = []) {
+  if (reducers.length === 0) return tokens;
+
+  const [first, ...rest] = reducers;
+  const newTokens = tokens.reduce(first, []);
+
+  return arrayReduce(newTokens, rest);
 };
 
 function createBasicTokens(text) {
@@ -21,6 +35,7 @@ function createBasicTokens(text) {
   });
 }
 
+// ------------------------ typeMap ---------------------
 function createTokenMap(typeMap = {}) {
   return Object.entries(typeMap).reduce((all, [newType, value]) => {
     if (_.isString(value)) {
@@ -42,34 +57,28 @@ function remapTokens(tokenMap) {
   };
 }
 
-function arrayReduce(tokens, reducers = []) {
-  if (reducers.length === 0) return tokens;
-
-  const [first, ...rest] = reducers;
-
-  const newTokens = tokens.reduce(first, []);
-
-  return arrayReduce(newTokens, rest);
-}
-
 // ------------------------ concat ---------------------
 function isAtTokenPos(targetStr, tokens, idx) {
   return targetStr.split("").every((char, i) => {
-    return char === tokens[idx + i].value;
+    const nextToken = tokens[idx + i];
+
+    if (!nextToken) return false;
+    return char === nextToken.value;
   });
 }
 
-function tokenReducer(
+function createConcatReducer(
   type,
   startDelimeter,
-  endDelimeter,
-  includeStartDelimeter
+  endDelimeter = "\n",
+  includeStartDelimeter = false,
+  includeStopDelimeter = false
 ) {
-  if (!startDelimeter) {
-    throw new Error(
-      "[stringParse] A start delimeter must be provided for the concat option"
-    );
-  }
+  _.assertExists(type, `[stringParse] A type must be provided to concat.`);
+  _.assertExists(
+    startDelimeter,
+    `[stringParse] A startDelimeter must be provided to concat.`
+  );
 
   let tempToken = undefined;
 
@@ -77,7 +86,7 @@ function tokenReducer(
     const startDelimFirstChar = startDelimeter[0];
     const isBuilding = !!tempToken;
     const isFinishedBuilding =
-      isBuilding && isAtTokenPos(endDelimeter, origTokens, idx + 1);
+      isBuilding && isAtTokenPos(endDelimeter, origTokens, idx);
     const shouldContinueBuilding = isBuilding && !isFinishedBuilding;
     const shouldStartBuilding =
       !isBuilding && isAtTokenPos(startDelimeter, origTokens, idx);
@@ -85,12 +94,20 @@ function tokenReducer(
     if (shouldStartBuilding) {
       if (includeStartDelimeter) {
         tempToken = { type, value: startDelimFirstChar };
+      } else {
+        newTokens.push(curToken);
+        tempToken = { type, value: "" };
       }
     } else if (shouldContinueBuilding) {
       tempToken.value += curToken.value;
     } else if (isFinishedBuilding) {
-      tempToken.value += curToken.value;
-      newTokens.push({ ...tempToken });
+      if (includeStopDelimeter) {
+        tempToken.value += curToken.value;
+        newTokens.push({ ...tempToken });
+      } else {
+        newTokens.push({ ...tempToken });
+        newTokens.push(curToken);
+      }
 
       tempToken = undefined;
     } else {
@@ -102,9 +119,17 @@ function tokenReducer(
 }
 
 function createConcatReducers(concat = []) {
-  return concat.map(({ type, start, end, includeStartDelimeter }) => {
-    return tokenReducer(type, start, end, includeStartDelimeter);
-  });
+  return concat.map(
+    ({ type, start, stop, includeStartDelimeter, includeStopDelimeter }) => {
+      return createConcatReducer(
+        type,
+        start,
+        stop,
+        includeStartDelimeter,
+        includeStopDelimeter
+      );
+    }
+  );
 }
 
 export default function stringParse(text, opts) {
@@ -118,7 +143,7 @@ export default function stringParse(text, opts) {
   // since the user can run custom reducers manually after
   // stringParse().
   let tokens = createBasicTokens(text);
-  tokens = arrayReduce(tokens, concatReducers.concat(reducers));
+  tokens = _.arrayReduce(tokens, concatReducers.concat(reducers));
 
   return tokens.map(remapTokens(tokenMap));
 }

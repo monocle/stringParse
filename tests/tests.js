@@ -63,12 +63,12 @@ describe("stringParse has an option to concatenate tokens and has a", () => {
   test("includeStartDelimeter option", () => {
     // prettier-ignore
     const reducedValues = [
-      'let', ' ', 'foo', ' ', '=', ' ', '`', 'bar', '`',
+      'let', ' ', 'foo', ' ', '=', ' ', '`', 'bar was here', '`',
       ';', ' ', '// TODO rename variable', '\n'
     ];
     // prettier-ignore
     const types = [
-      'word', 'ws', 'word', 'ws', 'other', 'ws', 'other', 'word', 'other',
+      'word', 'ws', 'word', 'ws', 'other', 'ws', 'other', 'string', 'other',
       'other', 'ws', 'comment', 'ws'
     ];
     const opts = {
@@ -76,10 +76,36 @@ describe("stringParse has an option to concatenate tokens and has a", () => {
         {
           type: "comment",
           start: "//",
-          end: "\n",
+          stop: "\n",
           includeStartDelimeter: true,
+          // includeStopDelimeter defaults to false
         },
-        // { type: "string", start: "`", end: "`", includeBothDelimeters: false },
+        // comments should be built before strings
+        { type: "string", start: "`", stop: "`", includeStartDelimeter: false },
+      ],
+    };
+
+    const tokens = stringParse(reducedValues.join(""), opts);
+    const tokenTypes = tokens.map((token) => token.type);
+    const tokenValues = tokens.map((token) => token.value);
+
+    expect(tokens.length).toBe(types.length);
+    expect(tokenValues).toBe(reducedValues);
+    expect(tokenTypes).toBe(types);
+  });
+
+  test("includeEndDelimeter option", () => {
+    const reducedValues = ["aaa", " ", "/", "/ this is a weird comment\n"];
+    const types = ["word", "ws", "other", "comment"];
+    const opts = {
+      concat: [
+        {
+          type: "comment",
+          start: "//",
+          stop: "\n",
+          // includeStartDelimeter defaults to false
+          includeStopDelimeter: true,
+        },
       ],
     };
 
