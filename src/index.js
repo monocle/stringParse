@@ -132,7 +132,7 @@ function createConcatReducers(concat = []) {
   );
 }
 
-export default function stringParse(text, opts) {
+export default function stringParse(text, opts = {}) {
   const { typeMap, concat } = opts;
   const tokenMap = createTokenMap(typeMap);
   const concatReducers = createConcatReducers(concat);
