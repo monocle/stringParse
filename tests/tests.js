@@ -77,13 +77,13 @@ describe("stringParse has an option to concatenate tokens and has a", () => {
   test("includeStartDelimeter option", () => {
     // prettier-ignore
     const reducedValues = [
-      'let', ' ', 'foo', ' ', '=', ' ', '`', 'bar was here', '`',
-      ';', ' ', '// TODO rename variable', '\n'
+      ' ', 'let', ' ', 'foo', ' ', '=', ' ', '`', 'bar was here', '`',
+      ';', ' ', '// TODO rename variable', '\n', ' ', 'baz'
     ];
     // prettier-ignore
     const types = [
-      'word', 'ws', 'word', 'ws', 'other', 'ws', 'other', 'string', 'other',
-      'other', 'ws', 'comment', 'ws'
+      'ws', 'word', 'ws', 'word', 'ws', 'other', 'ws', 'other', 'string', 'other',
+      'other', 'ws', 'comment', 'newline', 'ws', 'word'
     ];
     const opts = {
       concat: [
@@ -94,7 +94,6 @@ describe("stringParse has an option to concatenate tokens and has a", () => {
           includeStartDelimeter: true,
           // includeStopDelimeter defaults to false
         },
-        // comments should be built before strings
         { type: "string", start: "`", stop: "`", includeStartDelimeter: false },
       ],
     };
@@ -102,6 +101,7 @@ describe("stringParse has an option to concatenate tokens and has a", () => {
     const tokens = stringParse(reducedValues.join(""), opts);
     const tokenTypes = tokens.map((token) => token.type);
     const tokenValues = tokens.map((token) => token.value);
+    console.log(tokens);
 
     expect(tokens.length).toBe(types.length);
     expect(tokenValues).toBe(reducedValues);
@@ -126,8 +126,6 @@ describe("stringParse has an option to concatenate tokens and has a", () => {
     const tokens = stringParse(reducedValues.join(""), opts);
     const tokenTypes = tokens.map((token) => token.type);
     const tokenValues = tokens.map((token) => token.value);
-
-    console.log(tokens);
 
     expect(tokens.length).toBe(types.length);
     expect(tokenValues).toBe(reducedValues);

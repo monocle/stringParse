@@ -22,9 +22,10 @@ function createBasicTokens(text) {
   const ws = `(?<ws>\\s+)`;
   const number = `(?<number>\\d+)`;
   const word = `(?<word>\\w+)`;
+  const newline = `(?<newline>\\n+)`;
   const other = `(?<other>[^\\s\\d\\w])`; // everything else is a single char
 
-  const regex = new RegExp(`${ws}|${number}|${word}|${other}`, "g");
+  const regex = new RegExp(`${newline}|${ws}|${number}|${word}|${other}`, "g");
 
   return [...text.matchAll(regex)].map((match) => {
     const [key, value] = Object.entries(match.groups).find(([key, value]) => {
