@@ -94,15 +94,15 @@ describe("stringParse has an option to concatenate tokens and has a", () => {
     expect(tokenTypes).toBe(types);
   });
 
-  test("includeEndDelimeter option", () => {
-    const reducedValues = ["aaa", " ", "/", "/ this is a weird comment\n"];
+  test("includeStopDelimeter option", () => {
+    const reducedValues = ["aaa", " ", "/", "/ this is a weird comment*/"];
     const types = ["word", "ws", "other", "comment"];
     const opts = {
       concat: [
         {
           type: "comment",
           start: "//",
-          stop: "\n",
+          stop: "*/",
           // includeStartDelimeter defaults to false
           includeStopDelimeter: true,
         },
@@ -112,6 +112,8 @@ describe("stringParse has an option to concatenate tokens and has a", () => {
     const tokens = stringParse(reducedValues.join(""), opts);
     const tokenTypes = tokens.map((token) => token.type);
     const tokenValues = tokens.map((token) => token.value);
+
+    console.log(tokens);
 
     expect(tokens.length).toBe(types.length);
     expect(tokenValues).toBe(reducedValues);

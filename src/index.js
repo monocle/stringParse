@@ -70,7 +70,7 @@ function isAtTokenPos(targetStr, tokens, idx) {
 function createConcatReducer(
   type,
   startDelimeter,
-  endDelimeter = "\n",
+  stopDelimeter = "\n",
   includeStartDelimeter = false,
   includeStopDelimeter = false
 ) {
@@ -81,15 +81,17 @@ function createConcatReducer(
   );
 
   let tempToken = undefined;
+  let stopDelimeterRemaining = 0;
 
   return (newTokens, curToken, idx, origTokens) => {
     const startDelimFirstChar = startDelimeter[0];
     const isBuilding = !!tempToken;
     const isFinishedBuilding =
-      isBuilding && isAtTokenPos(endDelimeter, origTokens, idx);
+      isBuilding && isAtTokenPos(stopDelimeter, origTokens, idx);
     const shouldContinueBuilding = isBuilding && !isFinishedBuilding;
     const shouldStartBuilding =
       !isBuilding && isAtTokenPos(startDelimeter, origTokens, idx);
+    const isBuildingStopDelimeter = stopDelimeterRemaining > 0;
 
     if (shouldStartBuilding) {
       if (includeStartDelimeter) {
@@ -100,16 +102,27 @@ function createConcatReducer(
       }
     } else if (shouldContinueBuilding) {
       tempToken.value += curToken.value;
-    } else if (isFinishedBuilding) {
-      if (includeStopDelimeter) {
-        tempToken.value += curToken.value;
-        newTokens.push({ ...tempToken });
-      } else {
-        newTokens.push({ ...tempToken });
-        newTokens.push(curToken);
-      }
 
+      if (isBuildingStopDelimeter) {
+        stopDelimeterRemaining -= 1;
+
+        if (stopDelimeterRemaining === 0) {
+          newTokens.push({ ...tempToken });
+          tempToken = undefined;
+        }
+      }
+    } else if (isFinishedBuilding && !includeStopDelimeter) {
+      newTokens.push({ ...tempToken });
+      newTokens.push(curToken);
       tempToken = undefined;
+    } else if (isFinishedBuilding && includeStopDelimeter) {
+      tempToken.value += curToken.value;
+
+      stopDelimeterRemaining = stopDelimeter.length - 1;
+
+      if (stopDelimeterRemaining === 0) {
+        tempToken = undefined;
+      }
     } else {
       newTokens.push(curToken);
     }
