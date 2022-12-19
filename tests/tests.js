@@ -1,6 +1,20 @@
 import stringParse from "../src/index.js";
 import { expect, describe, test } from "../lib/testing/src/index.js";
 
+describe("stringPase without optioins", () => {
+  test("will create the appropriate tokens", () => {
+    const values = [" ", "11", " ", "foo", "."];
+    const types = ["ws", "number", "ws", "word", "other"];
+    const tokens = stringParse(values.join(""));
+    const tokenTypes = tokens.map((token) => token.type);
+    const tokenValues = tokens.map((token) => token.value);
+
+    expect(tokens.length).toBe(types.length);
+    expect(tokenValues).toBe(values);
+    expect(tokenTypes).toBe(types);
+  });
+});
+
 describe("stringParse can reduce the tokens", () => {
   test("when given an array of reducer functions", () => {
     const elems = [" ", "function", " ", "false", " ", "12"];
