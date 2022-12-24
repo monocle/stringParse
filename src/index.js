@@ -107,7 +107,7 @@ function createConcatReducer(
       if (isBuildingStopDelimeter) {
         stopDelimeterRemaining -= 1;
 
-        if (stopDelimeterRemaining === 0) {
+        if (stopDelimeterRemaining <= 0) {
           newTokens.push({ ...tempToken });
           tempToken = undefined;
         }
@@ -121,7 +121,8 @@ function createConcatReducer(
 
       stopDelimeterRemaining = stopDelimeter.length - 1;
 
-      if (stopDelimeterRemaining === 0) {
+      if (stopDelimeterRemaining <= 0) {
+        newTokens.push({ ...tempToken });
         tempToken = undefined;
       }
     } else {

@@ -73,8 +73,8 @@ describe("stringParse has an option to change the type of a token given a", () =
   });
 });
 
-describe("stringParse has an option to concatenate tokens and has a", () => {
-  test("includeStartDelimeter option", () => {
+describe("stringParse has an option to concatenate tokens and", () => {
+  test("has a includeStartDelimeter option", () => {
     // prettier-ignore
     const reducedValues = [
       ' ', 'let', ' ', 'foo', ' ', '=', ' ', '`', 'bar was here', '`',
@@ -101,14 +101,13 @@ describe("stringParse has an option to concatenate tokens and has a", () => {
     const tokens = stringParse(reducedValues.join(""), opts);
     const tokenTypes = tokens.map((token) => token.type);
     const tokenValues = tokens.map((token) => token.value);
-    console.log(tokens);
 
     expect(tokens.length).toBe(types.length);
     expect(tokenValues).toBe(reducedValues);
     expect(tokenTypes).toBe(types);
   });
 
-  test("includeStopDelimeter option", () => {
+  test("has a includeStopDelimeter option", () => {
     const reducedValues = ["aaa", " ", "/", "/ this is a weird comment*/"];
     const types = ["word", "ws", "other", "comment"];
     const opts = {
@@ -118,6 +117,55 @@ describe("stringParse has an option to concatenate tokens and has a", () => {
           start: "//",
           stop: "*/",
           // includeStartDelimeter defaults to false
+          includeStopDelimeter: true,
+        },
+      ],
+    };
+
+    const tokens = stringParse(reducedValues.join(""), opts);
+    const tokenTypes = tokens.map((token) => token.type);
+    const tokenValues = tokens.map((token) => token.value);
+
+    expect(tokens.length).toBe(types.length);
+    expect(tokenValues).toBe(reducedValues);
+    expect(tokenTypes).toBe(types);
+  });
+
+  test("can handle two separate strings", () => {
+    const reducedValues = ["`", "string1", "`", " ", "`", "string2", "`"];
+    const types = [
+      "other",
+      "string",
+      "other",
+      "ws",
+      "other",
+      "string",
+      "other",
+    ];
+    const opts = {
+      concat: [
+        { type: "string", start: "`", stop: "`", includeStartDelimeter: false },
+      ],
+    };
+    const tokens = stringParse(reducedValues.join(""), opts);
+    const tokenTypes = tokens.map((token) => token.type);
+    const tokenValues = tokens.map((token) => token.value);
+
+    expect(tokens.length).toBe(types.length);
+    expect(tokenValues).toBe(reducedValues);
+    expect(tokenTypes).toBe(types);
+  });
+
+  test("can handle two chars by themselves", () => {
+    const reducedValues = ["foo", "=>", "bar"];
+    const types = ["word", "arrow", "word"];
+    const opts = {
+      concat: [
+        {
+          type: "arrow",
+          start: "=>",
+          stop: ">",
+          includeStartDelimeter: true,
           includeStopDelimeter: true,
         },
       ],
