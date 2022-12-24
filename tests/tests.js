@@ -30,7 +30,7 @@ describe("stringParse can reduce the tokens", () => {
       return newTokens;
     };
 
-    const changeTypeToWord = (newTokens, { type, value }) => {
+    const changeTypeToWord = (newTokens, { value }) => {
       newTokens.push({ type: "word", value });
       return newTokens;
     };
@@ -108,8 +108,8 @@ describe("stringParse has an option to concatenate tokens and", () => {
   });
 
   test("has a includeStopDelimeter option", () => {
-    const reducedValues = ["aaa", " ", "/", "/ this is a weird comment*/"];
-    const types = ["word", "ws", "other", "comment"];
+    const reducedValues = ["aaa", " ", "/", "/", "this is a weird comment*/"];
+    const types = ["word", "ws", "other", "other", "comment"];
     const opts = {
       concat: [
         {
@@ -164,7 +164,7 @@ describe("stringParse has an option to concatenate tokens and", () => {
         {
           type: "arrow",
           start: "=>",
-          stop: ">",
+          stop: "",
           includeStartDelimeter: true,
           includeStopDelimeter: true,
         },
@@ -174,6 +174,7 @@ describe("stringParse has an option to concatenate tokens and", () => {
     const tokens = stringParse(reducedValues.join(""), opts);
     const tokenTypes = tokens.map((token) => token.type);
     const tokenValues = tokens.map((token) => token.value);
+    console.log("===", tokenValues);
 
     expect(tokens.length).toBe(types.length);
     expect(tokenValues).toBe(reducedValues);

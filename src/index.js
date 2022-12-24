@@ -28,7 +28,7 @@ function createBasicTokens(text) {
   const regex = new RegExp(`${newline}|${ws}|${number}|${word}|${other}`, "g");
 
   return [...text.matchAll(regex)].map((match) => {
-    const [key, value] = Object.entries(match.groups).find(([key, value]) => {
+    const [key, value] = Object.entries(match.groups).find(([, value]) => {
       return value;
     });
 
@@ -59,74 +59,88 @@ function remapTokens(tokenMap) {
 }
 
 // ------------------------ concat ---------------------
-function isAtTokenPos(targetStr, tokens, idx) {
-  return targetStr.split("").every((char, i) => {
-    const nextToken = tokens[idx + i];
+function isSignal(pattern, tokens, idx) {
+  return pattern.split("").every((char, i) => {
+    const token = tokens[idx + i];
 
-    if (!nextToken) return false;
-    return char === nextToken.value;
+    if (!token) return false;
+    return char === token.value;
   });
 }
 
-function createConcatReducer(
-  type,
-  startDelimeter,
-  stopDelimeter = "\n",
-  includeStartDelimeter = false,
-  includeStopDelimeter = false
-) {
-  _.assertExists(type, `[stringParse] A type must be provided to concat.`);
+function createConcatReducer(settings) {
   _.assertExists(
-    startDelimeter,
+    settings.type,
+    `[stringParse] A type must be provided to concat.`
+  );
+  _.assertExists(
+    settings.start,
     `[stringParse] A startDelimeter must be provided to concat.`
   );
 
   let tempToken = undefined;
-  let stopDelimeterRemaining = 0;
+  let skipNum = 0;
 
-  return (newTokens, curToken, idx, origTokens) => {
-    const startDelimFirstChar = startDelimeter[0];
-    const isBuilding = !!tempToken;
-    const isFinishedBuilding =
-      isBuilding && isAtTokenPos(stopDelimeter, origTokens, idx);
-    const shouldContinueBuilding = isBuilding && !isFinishedBuilding;
-    const shouldStartBuilding =
-      !isBuilding && isAtTokenPos(startDelimeter, origTokens, idx);
-    const isBuildingStopDelimeter = stopDelimeterRemaining > 0;
+  function collectDelimeter({ type, idx, origTokens, tempToken }) {
+    const delimeter = settings[type];
+    const len = delimeter.length;
+    let tokens = [];
 
-    if (shouldStartBuilding) {
-      if (includeStartDelimeter) {
-        tempToken = { type, value: startDelimFirstChar };
-      } else {
-        newTokens.push(curToken);
-        tempToken = { type, value: "" };
-      }
-    } else if (shouldContinueBuilding) {
-      tempToken.value += curToken.value;
-
-      if (isBuildingStopDelimeter) {
-        stopDelimeterRemaining -= 1;
-
-        if (stopDelimeterRemaining <= 0) {
-          newTokens.push({ ...tempToken });
-          tempToken = undefined;
+    if (
+      (type === "start" && settings.includeStartDelimeter) ||
+      (type === "stop" && settings.includeStopDelimeter)
+    ) {
+      tempToken.value += delimeter;
+    } else {
+      for (let i = 0; i < len; i++) {
+        if (origTokens[idx + i]) {
+          tokens.push({ ...origTokens[idx + i] });
         }
       }
-    } else if (isFinishedBuilding && !includeStopDelimeter) {
-      newTokens.push({ ...tempToken });
-      newTokens.push(curToken);
-      tempToken = undefined;
-    } else if (isFinishedBuilding && includeStopDelimeter) {
-      tempToken.value += curToken.value;
+    }
 
-      stopDelimeterRemaining = stopDelimeter.length - 1;
+    return [len, tempToken, tokens];
+  }
 
-      if (stopDelimeterRemaining <= 0) {
-        newTokens.push({ ...tempToken });
-        tempToken = undefined;
+  return (newTokens, curToken, idx, origTokens) => {
+    const isCollecting = !!tempToken;
+    const type = settings.type;
+    let delimTokens = [];
+
+    skipNum--;
+
+    if (skipNum > 0) return newTokens;
+
+    if (!isCollecting && isSignal(settings.start, origTokens, idx)) {
+      tempToken = { type, value: "" };
+
+      [skipNum, tempToken, delimTokens] = collectDelimeter({
+        type: "start",
+        idx,
+        origTokens,
+        tempToken,
+      });
+
+      newTokens = newTokens.concat(delimTokens);
+    } else if (isCollecting && isSignal(settings.stop, origTokens, idx)) {
+      [skipNum, tempToken, delimTokens] = collectDelimeter({
+        type: "stop",
+        idx,
+        origTokens,
+        tempToken,
+      });
+
+      newTokens = newTokens.concat(tempToken).concat(delimTokens);
+
+      if (settings.stop === "") {
+        newTokens.push({ ...curToken });
       }
+
+      tempToken = undefined;
+    } else if (isCollecting) {
+      tempToken.value += curToken.value;
     } else {
-      newTokens.push(curToken);
+      newTokens.push({ ...curToken });
     }
 
     return newTokens;
@@ -134,17 +148,13 @@ function createConcatReducer(
 }
 
 function createConcatReducers(concat = []) {
-  return concat.map(
-    ({ type, start, stop, includeStartDelimeter, includeStopDelimeter }) => {
-      return createConcatReducer(
-        type,
-        start,
-        stop,
-        includeStartDelimeter,
-        includeStopDelimeter
-      );
-    }
-  );
+  return concat.map((settings) => {
+    return createConcatReducer({
+      includeStartDelimeter: false,
+      includeStopDelimeter: false,
+      ...settings,
+    });
+  });
 }
 
 export default function stringParse(text, opts = {}) {
