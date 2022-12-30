@@ -9,9 +9,10 @@ const _ = {
         }
     },
     arrayReduce: function arrayReduce(tokens, reducers) {
-        if (reducers.length === 0)
-            return tokens;
         const [first, ...rest] = reducers;
+        if (!first) {
+            return tokens;
+        }
         const newTokens = tokens.reduce(first, []);
         return arrayReduce(newTokens, rest);
     },
@@ -24,7 +25,8 @@ function createBasicTokens(text) {
     const other = `(?<other>[^\\s\\d\\w])`; // everything else is a single char
     const regex = new RegExp(`${newline}|${ws}|${number}|${word}|${other}`, "g");
     return [...text.matchAll(regex)].map((match) => {
-        const [key, value] = Object.entries(match.groups).find(([, value]) => {
+        const matchGroups = match.groups ?? {};
+        const [key, value] = Object.entries(matchGroups).find(([, value]) => {
             return value;
         });
         return { type: key, value };
@@ -58,23 +60,28 @@ function isSignal(pattern, tokens, idx) {
         return char === token.value;
     });
 }
-function createConcatReducer(settings) {
-    _.assertExists(settings.type, `[stringParse] A type must be provided to concat.`);
-    _.assertExists(settings.start, `[stringParse] A startDelimeter must be provided to concat.`);
-    let tempToken = { ...NullToken };
+function createConcatReducer(setting) {
     let skipNum = 0;
-    function collectDelimeter({ type, idx, origTokens, tempToken, }) {
-        const delimeter = settings[type];
+    let tempToken = { ...NullToken };
+    const stop = setting.stop ?? "\n";
+    const includeStartDelimeter = setting.includeStartDelimeter ?? false;
+    const includeStopDelimeter = setting.includeStopDelimeter ?? false;
+    function collectDelimeter({ startOrStop, idx, origTokens, tempToken, }) {
+        const delimeter = setting[startOrStop];
+        if (!delimeter) {
+            return [0, tempToken, []];
+        }
         const len = delimeter.length;
         let tokens = [];
-        if ((type === "start" && settings.includeStartDelimeter) ||
-            (type === "stop" && settings.includeStopDelimeter)) {
+        if ((startOrStop === "start" && includeStartDelimeter) ||
+            (startOrStop === "stop" && includeStopDelimeter)) {
             tempToken.value += delimeter;
         }
         else {
             for (let i = 0; i < len; i++) {
-                if (origTokens[idx + i]) {
-                    tokens.push({ ...origTokens[idx + i] });
+                const nextToken = origTokens[idx + i];
+                if (nextToken) {
+                    tokens.push(nextToken);
                 }
             }
         }
@@ -82,30 +89,30 @@ function createConcatReducer(settings) {
     }
     return (newTokens, curToken, idx, origTokens) => {
         const isCollecting = tempToken.type !== "";
-        const type = settings.type;
         let delimTokens = [];
+        const type = setting.type;
         skipNum--;
         if (skipNum > 0)
             return newTokens;
-        if (!isCollecting && isSignal(settings.start, origTokens, idx)) {
+        if (!isCollecting && isSignal(setting.start, origTokens, idx)) {
             tempToken = { ...NullToken, type };
             [skipNum, tempToken, delimTokens] = collectDelimeter({
-                type: "start",
+                startOrStop: "start",
                 idx,
                 origTokens,
                 tempToken,
             });
             newTokens = newTokens.concat(delimTokens);
         }
-        else if (isCollecting && isSignal(settings.stop, origTokens, idx)) {
+        else if (isCollecting && isSignal(stop, origTokens, idx)) {
             [skipNum, tempToken, delimTokens] = collectDelimeter({
-                type: "stop",
+                startOrStop: "stop",
                 idx,
                 origTokens,
                 tempToken,
             });
             newTokens = newTokens.concat(tempToken).concat(delimTokens);
-            if (settings.stop === "") {
+            if (stop === "") {
                 newTokens.push({ ...curToken });
             }
             tempToken = { ...NullToken };
@@ -120,12 +127,8 @@ function createConcatReducer(settings) {
     };
 }
 function createConcatReducers(concat) {
-    return concat.map((settings) => {
-        return createConcatReducer({
-            includeStartDelimeter: false,
-            includeStopDelimeter: false,
-            ...settings,
-        });
+    return concat.map((setting) => {
+        return createConcatReducer(setting);
     });
 }
 export default function stringParse(text, opts = { typeMap: [], concat: [], reducers: [] }) {
