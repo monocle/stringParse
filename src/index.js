@@ -89,8 +89,9 @@ function createConcatReducer(setting) {
     }
     return (newTokens, curToken, idx, origTokens) => {
         const isCollecting = tempToken.type !== "";
-        let delimTokens = [];
         const type = setting.type;
+        const origLen = origTokens.length;
+        let delimTokens = [];
         skipNum--;
         if (skipNum > 0)
             return newTokens;
@@ -122,6 +123,10 @@ function createConcatReducer(setting) {
         }
         else {
             newTokens.push({ ...curToken });
+        }
+        if (tempToken.value !== "" &&
+            (idx === origLen - 1 || idx + skipNum >= origLen)) {
+            newTokens.push({ ...tempToken });
         }
         return newTokens;
     };
