@@ -1,14 +1,14 @@
 import stringParse from "../src/index.js";
 import { expect, describe, test } from "../lib/testing/src/index.js";
 
-function createTestTokens(reducedValues, opts = {}) {
+function createTestTokens(reducedValues, opts) {
   const tokens = stringParse(reducedValues.join(""), opts);
   const tokenTypes = tokens.map((token) => token.type);
   const tokenValues = tokens.map((token) => token.value);
   return { tokens, tokenValues, tokenTypes };
 }
 
-describe("stringPase without optioins", () => {
+describe("stringPase without options", () => {
   test("will create the appropriate tokens", () => {
     const reducedValues = [" ", "11", " ", "foo", "."];
     const types = ["ws", "number", "ws", "word", "other"];
@@ -157,7 +157,6 @@ describe("stringParse has an option to concatenate tokens and", () => {
           type: "string",
           start: "`",
           stop: "`",
-          includeStartDelimeter: false,
         },
       ],
     };
@@ -225,5 +224,30 @@ describe("stringParse has an option to concatenate tokens and", () => {
       expect(tokenValues).toBe(reducedValues);
       expect(tokenTypes).toBe(types);
     });
+  });
+});
+
+describe("stringParse with different options", () => {
+  test("prioritizes reducing over remapping", () => {
+    const opts = {
+      typeMap: { declarator: "function" },
+      concat: [
+        {
+          type: "string",
+          start: "`",
+          stop: "`",
+        },
+      ],
+    };
+    const reducedValues = ["`", "function", "`"];
+    const types = ["other", "string", "other"];
+    const { tokens, tokenValues, tokenTypes } = createTestTokens(
+      reducedValues,
+      opts
+    );
+
+    expect(tokens.length).toBe(types.length);
+    expect(tokenValues).toBe(reducedValues);
+    expect(tokenTypes).toBe(types);
   });
 });

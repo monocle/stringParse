@@ -125,5 +125,6 @@ This would take all of the tokens and return a single token:
 This is the sequence of token processing:
 
 1. Create basic tokens (whitespace, numbers, words, other).
-2. Perform `concat`enation, if provided, in the order given.
-3. Execute `reducers`, if provided, in the order given.
+2. Perform type remapping with `typeMap`.
+3. Perform `concat`enation, if provided, in the order given.
+4. Execute `reducers`, if provided, in the order given.

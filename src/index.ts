@@ -209,18 +209,12 @@ function createConcatReducers(concat: ConcatReducerSetting[]) {
 
 export default function stringParse(
   text: string,
-  opts = { typeMap: [], concat: [], reducers: [] }
+  opts = { typeMap: {}, concat: [], reducers: [] }
 ) {
-  const { typeMap = [], concat = [], reducers = [] } = opts;
+  const { typeMap = {}, concat = [], reducers = [] } = opts;
   const tokenMap = createTokenMap(typeMap);
   const concatReducers = createConcatReducers(concat);
+  let tokens = createBasicTokens(text).map(remapTokens(tokenMap));
 
-  // Reducing should happen before remapping tokens.
-  // Custom reducers should happen after convenience reducers
-  // since the user can run custom reducers manually after
-  // stringParse().
-  let tokens = createBasicTokens(text);
-  tokens = _.arrayReduce(tokens, concatReducers.concat(reducers));
-
-  return tokens.map(remapTokens(tokenMap));
+  return _.arrayReduce(tokens, concatReducers.concat(reducers));
 }
